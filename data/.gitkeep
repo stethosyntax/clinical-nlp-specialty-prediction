@@ -1,0 +1,2 @@
+Place MTSamples CSV or MIMIC-III files here.
+NEVER commit MIMIC-III data to GitHub — it is protected health information.

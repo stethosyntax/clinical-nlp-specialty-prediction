@@ -4,6 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Active-brightgreen)]()
 [![Dataset](https://img.shields.io/badge/Dataset-MTSamples-lightblue)]()
+[![Accuracy](https://img.shields.io/badge/Accuracy-92.4%25-success)]()
 [![Phase](https://img.shields.io/badge/Phase-1%20Complete-success)]()
 
 An end-to-end NLP pipeline that predicts the medical specialty of a clinical note using free text — built by a physician turned data scientist.
@@ -23,19 +24,21 @@ This project builds a practical, interpretable text classification pipeline usin
 ```
 Raw Clinical Notes (MTSamples)
            ↓
-  Step 1: Load Data & Exploratory Analysis
+  Step 1:  Load Data & Exploratory Analysis
            ↓
-  Step 2: Filter & Prepare (Top 10 specialties)
+  Step 2:  Filter & Prepare (5 clinically distinct specialties)
            ↓
-  Step 3: Text Preprocessing (spaCy)
+  Step 3:  Text Preprocessing (spaCy)
            ↓
-  Step 4: Train / Test Split (80/20, stratified)
+  Step 4:  Train / Test Split (80/20, stratified)
            ↓
-  Step 5: Baseline — TF-IDF + Logistic Regression
+  Step 5:  Baseline — TF-IDF + Logistic Regression
            ↓
-  Step 6: Improved — TF-IDF + Linear SVC
+  Step 6:  Improved — TF-IDF + Linear SVC
            ↓
-  Step 7: Evaluation — Confusion Matrix, Model Comparison, Top Terms
+  Step 7D: Diagnostic Analysis
+           ↓
+  Step 7A–C: Evaluation — Confusion Matrix, Model Comparison, Top Terms
            ↓
   Predicted Medical Specialty
 ```
@@ -46,21 +49,44 @@ Raw Clinical Notes (MTSamples)
 
 | Step | What We Do | Why It Matters |
 |---|---|---|
-| **1. EDA** | Load data, chart specialty distribution and note lengths, generate word clouds | Reveals class imbalance, note quality, and dominant vocabulary before any modeling |
-| **2. Filter & Prepare** | Keep top 10 specialties, drop near-empty notes | Models can't learn from 5 examples per class — filtering ensures each class has sufficient signal |
-| **3. Preprocessing** | Lowercase → remove numbers → strip punctuation → tokenize → remove stopwords → lemmatize | Raw clinical text is noisy — generic terms like "patient" appear in every specialty and carry no signal |
-| **4. Train/Test Split** | 80/20 stratified split | Stratification ensures every specialty is proportionally represented in both sets, giving a fair and honest evaluation |
-| **5. Baseline Model** | TF-IDF + Logistic Regression | Always start simple — this sets the performance floor that every subsequent model must beat |
-| **6. Improved Model** | TF-IDF + Linear SVC | SVCs find sharper decision boundaries in high-dimensional TF-IDF feature space, often outperforming LR on text tasks |
-| **7. Evaluation** | Confusion matrix (raw + normalized), model comparison chart, top predictive terms per specialty | Numbers alone don't tell the full story — visual evaluation shows where the model fails and whether it has learned clinically meaningful patterns |
+| **📊 1. EDA** | Load data, chart specialty distribution and note lengths, generate word clouds | Reveals class imbalance, note quality, and dominant vocabulary before any modeling |
+| **🔧 2. Filter & Prepare** | Keep 5 clinically distinct specialties, drop near-empty notes | Reduces vocabulary overlap between classes — cleaner boundaries = stronger signal |
+| **🧹 3. Preprocessing** | Lowercase → remove numbers → strip punctuation → tokenize → remove stopwords → lemmatize | Only truly generic words removed — specialty-specific clinical terms are preserved |
+| **✂️ 4. Train/Test Split** | 80/20 stratified split | Stratification ensures every specialty is proportionally represented in both sets |
+| **🤖 5. Baseline Model** | TF-IDF + Logistic Regression (20k features, trigrams, C=5) | Sets the performance floor — every subsequent model must beat this |
+| **🚀 6. Improved Model** | TF-IDF + Linear SVC (tuned C=0.5) | Sharper decision boundaries in high-dimensional TF-IDF space |
+| **📉 7A–C. Evaluation** | Model comparison with 5-fold CV, confusion matrix, top terms per specialty | CV gives honest scores; term analysis validates clinical interpretability |
+| **🔬 7D. Diagnostic** | Per-class F1 breakdown, class distribution, note length analysis | Documents the evidence behind every data decision — standard real-world practice |
+
+---
+
+## Version History
+
+| Version | Key Change | Weighted F1 |
+|---|---|---|
+| v1 | Initial pipeline — top 10 specialties, basic TF-IDF | 0.40 |
+| v2 | 6 hand-picked specialties, tuned TF-IDF, cross-validation | 0.52 |
+| v3 | Removed Surgery (catch-all class), 5 specialties | **0.924** |
+
+---
+
+## Why Surgery Was Removed
+
+Diagnostic analysis on v2 results revealed that MTSamples "Surgery" is a catch-all label covering cardiac surgery, knee surgery, bowel surgery, and spinal procedures — making its vocabulary overlap with every other specialty. Key findings:
+
+- Surgery made up **45% of the test set** but achieved only **F1: 0.446**
+- 133 out of 216 Surgery test notes were misclassified into other specialties
+- Removing it is a principled data science decision — Surgery requires a **dedicated sub-classifier** that understands surgical context, planned for Phase 2
 
 ---
 
 ## Dataset
 
-**MTSamples** — 4,999 real de-identified medical transcription notes across 40 specialties. Free to use, no sign-up required.
+**MTSamples** — 4,999 real de-identified medical transcription notes across 40 specialties.
 - Source: [mtsamples.com](https://www.mtsamples.com/)
-- GitHub mirror used in this project: [socd06/medical-nlp](https://github.com/socd06/medical-nlp)
+- GitHub mirror: [socd06/medical-nlp](https://github.com/socd06/medical-nlp)
+
+**Specialties used (v3):** Cardiovascular/Pulmonary · Orthopedic · Neurology · Gastroenterology · Urology
 
 > ⚠️ No patient data is stored in this repository. The notebook downloads the dataset automatically at runtime.
 
@@ -68,12 +94,21 @@ Raw Clinical Notes (MTSamples)
 
 ## Results
 
-| Model | Accuracy | Weighted F1 |
-|---|---|---|
-| TF-IDF + Logistic Regression | `[fill after run]` | `[fill after run]` |
-| TF-IDF + Linear SVC | `[fill after run]` | `[fill after run]` |
+| Model | Test Accuracy | Weighted F1 | 5-Fold CV F1 |
+|---|---|---|---|
+| TF-IDF + Logistic Regression | 92.0% | 0.9198 | 0.9033 ± 0.024 |
+| **TF-IDF + Linear SVC** | **92.4%** | **0.9236** | **0.9060 ± 0.024** |
 
-*Run the notebook to generate your results and update this table.*
+**Linear SVC is the best model.** The low CV standard deviation (0.024) confirms the model is stable and generalizes well across different data splits — not a lucky result on one test set.
+
+---
+
+## Key Findings
+
+- **Specialty-specific vocabulary is highly predictive** — top TF-IDF terms align strongly with clinical knowledge (e.g., "arthroscopy", "meniscus" → Orthopedic; "catheterization", "stent" → Cardiovascular; "seizure", "eeg" → Neurology)
+- **Trigrams significantly boost performance** — clinical phrases like "anterior cruciate ligament" carry strong specialty signal that unigrams miss
+- **Class composition matters more than class count** — Surgery's ambiguous catch-all nature was more damaging than having only 5 classes
+- **Cross-validation is essential** — a single train/test split can be misleading; CV F1 of 0.906 confirms the model's reliability
 
 ---
 
@@ -83,18 +118,19 @@ Raw Clinical Notes (MTSamples)
 clinical-nlp-specialty-prediction/
 │
 ├── notebooks/
-│   └── clinical_nlp_pipeline.ipynb   ← Main notebook (all steps + explanations)
+│   ├── clinical_nlp_pipeline.ipynb        ← Main notebook (v1 → v3, all changes inline)
+│   └── clinical_nlp_pipeline_v3.ipynb     ← Standalone v3 clean version
 │
 ├── src/
-│   ├── preprocess.py                  ← Text cleaning utilities (reusable module)
-│   ├── train.py                       ← Model pipeline builders + evaluation functions
-│   └── visualize.py                   ← All chart and visualization functions
+│   ├── preprocess.py                       ← Text cleaning utilities
+│   ├── train.py                            ← Model pipeline builders + evaluation
+│   └── visualize.py                        ← All chart functions
 │
 ├── data/
-│   └── .gitkeep                       ← Place data files here (never committed)
+│   └── .gitkeep                            ← Place data files here (never committed)
 │
 ├── outputs/
-│   └── .gitkeep                       ← Charts saved here at runtime (never committed)
+│   └── .gitkeep                            ← Charts saved here at runtime
 │
 ├── requirements.txt
 ├── .gitignore
@@ -133,25 +169,19 @@ Open `notebooks/clinical_nlp_pipeline.ipynb` and run all cells top to bottom.
 
 ---
 
-## Key Findings
-
-- **Specialty-specific vocabulary is highly predictive** — top TF-IDF terms per specialty align strongly with clinical domain knowledge (e.g., "arthroscopy", "meniscus" → Orthopedics; "catheterization", "stent" → Cardiovascular).
-- **Linear SVC outperforms Logistic Regression** on this task due to sharper decision boundaries in high-dimensional TF-IDF space.
-- **Class imbalance is a real challenge** — Surgery dominates the dataset. Using `class_weight='balanced'` is essential for fair performance across all specialties.
-
----
-
 ## Project Roadmap
 
 ### ✅ Phase 1 — Complete
-- MTSamples dataset (4,999 notes, 10 specialties)
-- TF-IDF + Logistic Regression baseline
-- TF-IDF + Linear SVC improved model
-- Full EDA, confusion matrix, model comparison, top terms per specialty
+- MTSamples dataset (4,999 notes, 5 specialties after diagnostic filtering)
+- TF-IDF + Logistic Regression baseline — 92.0% accuracy
+- TF-IDF + Linear SVC best model — **92.4% accuracy, 0.924 weighted F1**
+- Full EDA, confusion matrix, 5-fold CV, top terms per specialty
+- Documented diagnostic analysis for every data decision
 
 ### 🔄 Phase 2 — In Progress
-- MIMIC-III discharge summaries (50,000+ real hospital notes) — PhysioNet credentialing in progress
+- MIMIC-III discharge summaries (50,000+ real hospital notes) — PhysioNet credentialing approved ✅
 - ICD-9 multi-label code prediction
+- Surgery sub-classifier using granular surgical ICD-9 codes
 - Bio_ClinicalBERT fine-tuning (`emilyalsentzer/Bio_ClinicalBERT`)
 - SHAP explainability — word-level attribution per prediction
 - Streamlit app — paste any clinical note, get predicted specialty
@@ -161,7 +191,7 @@ Open `notebooks/clinical_nlp_pipeline.ipynb` and run all cells top to bottom.
 ## Author
 
 **Aruna Kunche**
-- Medical Graduate | M.S. Analytics, Harrisburg University (Expected 2026)
+- Medical Graduate | M.S. Analytics, Harrisburg University (Expected May 2027)
 - [LinkedIn](https://www.linkedin.com/in/arunakunche/)
 - [GitHub](https://github.com/stethosyntax)
 
